@@ -18,6 +18,8 @@ export const queryAndmutation = gql`
     availableSlots(serviceId: ID!): [StaffAvailability!]!
     myBookings: [Booking!]! # Customers manage/view their own
     allBookings: [Booking!]! # Admins manage all
+    me: User
+  
   }
 
   # Entry Points for mutating/changing data
@@ -34,7 +36,11 @@ export const queryAndmutation = gql`
     createBooking(slotId: ID!): Booking!
     updateBookingStatus(bookingId: ID!, state: BookingStatus!): Booking! # Admins/Staff
     updateBookingPaymentStatus(bookingId: ID!, state: PaymentStatus!): Booking! # Admins
-  }
+  
+    #Authentication & Role-Based Authorization
+    register(email: String!, password: String!): AuthPayload!
+    login(email: String!, password: String!): AuthPayload!
+    }
     `
 
 export default [
