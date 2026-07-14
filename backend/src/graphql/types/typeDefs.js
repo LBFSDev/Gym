@@ -36,7 +36,7 @@ const typeDefs = gql`
 
   # Core Types
   type User {
-    userId: ID!
+    user_id: ID!
     email: String!
     role: UserRole!
   }
@@ -98,7 +98,12 @@ const typeDefs = gql`
     paymentState: PaymentStatus!
     createdAt: String!
   }
+    
 
+  type AuthPayload {
+    token: String!
+    user: User!
+  }
 `;
 
 export default typeDefs;

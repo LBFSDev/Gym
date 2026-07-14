@@ -1,4 +1,12 @@
 // src/graphql/resolvers.js
+import {requireAuth }from '../../auth/permissions.js'
+import knex from '../../config/db.js'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken';
+
+const SALT_ROUNDS = 10;
+const JWT_SECRET = process.env.JWT_SECRET;
+
 export default {
   Query: {
     products: async (_, __, { db }) => {
@@ -17,6 +25,10 @@ export default {
       const userId = currentUser?.id || 1;
       return await db('orders').where({ user_id: userId }).select('*');
     }
+    ,me: async (_, __, context) => {
+      // Returns current user or throws an auth error
+      return requireAuth(context);
+    },
   },
 
   Mutation: {
@@ -52,7 +64,63 @@ export default {
       } catch (error) {
         throw new Error(`Booking failed: ${error.message}`);
       }
-    }
+    },
+    register: async (_, { email, password, role = 'customer' }) => {
+      // 1. Check if email exists
+      const existingUser = await knex('users').where({ email }).first();
+      if (existingUser) {
+        throw new Error('An account with this email already exists.');
+      }
+
+      // 2. Hash Password
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+      // 3. Save User to Postgres
+      const [newUser] = await knex('users')
+        .insert({
+          email,
+          password_hash: passwordHash,
+          role,
+          created_at: new Date(),
+        })
+        .returning(['user_id', 'email', 'role']);
+
+      // 4. Create Token
+      const token = jwt.sign({ userId: newUser.id, role: newUser.role }, JWT_SECRET, {
+        expiresIn: '7d',
+      });
+
+      return {
+        token,
+        user: newUser,
+      };
+    },
+    login: async (_, { email, password }) => {
+      // 1. Find User
+      const user = await knex('users').where({ email }).first();
+      if (!user) {
+        throw new Error('Invalid email or password.');
+      }
+
+      // 2. Compare Hash
+      const isMatch = await bcrypt.compare(password, user.password_hash);
+      if (!isMatch) {
+        throw new Error('Invalid email or password.');
+      }
+
+      // 3. Create Token
+      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+        expiresIn: '7d',
+      });
+
+      return {
+        token,
+        user: {
+          email: user.email,
+          role: user.role,
+        },
+      };
+    },
   },
 
   // Relationship Resolvers (How GraphQL nests types dynamically)
