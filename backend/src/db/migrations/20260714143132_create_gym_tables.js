@@ -1,6 +1,7 @@
 // src/db/migrations/[timestamp]_create_gym_tables.js
 
-exports.up = async function(knex) {
+//exports.up = async function(knex) {
+export async function up(knex) {
   // 1. Create ENUMs using raw SQL since Knex doesn't have built-in Postgres native enum syntax
   await knex.raw(`CREATE TYPE user_role AS ENUM ('customer', 'staff', 'admin');`);
   await knex.raw(`CREATE TYPE stock_status AS ENUM ('In Stock', 'Out of Stock', 'Low Stock');`);
@@ -103,16 +104,18 @@ await knex.schema.createTable('order_items', (table) => {
   `);
 };
 
-exports.down = async function(knex) {
+//exports.down = async function(knex) {
+export async function down(knex) {
   // Drop tables in reverse order to respect foreign key constraints
   await knex.schema.dropTableIfExists('bookings');
   await knex.schema.dropTableIfExists('staff_availability');
   await knex.schema.dropTableIfExists('services');
+  await knex.schema.dropTableIfExists('order_items'); // <<< ADD THIS LINE
   await knex.schema.dropTableIfExists('orders');
   await knex.schema.dropTableIfExists('cart_items');
   await knex.schema.dropTableIfExists('products');
   await knex.schema.dropTableIfExists('users');
-  await knex.schema.dropTableIfExists('order_items'); // <<< ADD THIS LINE
+
   // Drop custom types
   await knex.raw(`DROP TYPE IF EXISTS booking_status;`);
   await knex.raw(`DROP TYPE IF EXISTS payment_status;`);
