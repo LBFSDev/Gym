@@ -1,13 +1,13 @@
 import jwt from 'jsonwebtoken';
-import knex from '../db/index.js';
+import db from '../config/db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 
 export const getContext = async ({ req }) => {
   const authHeader = req.headers.authorization || '';
-
+  // console.log("AUTH HEADER:", authHeader);
   const token = authHeader.replace('Bearer ', '').trim();
-
+  // console.log("TOKEN:", token);
   if (!token) {
     return { currentUser: null };
   }
@@ -15,7 +15,7 @@ export const getContext = async ({ req }) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    const user = await knex('users')
+    const user = await db('users')
       .where({ user_id: decoded.userId })
       .first();
 

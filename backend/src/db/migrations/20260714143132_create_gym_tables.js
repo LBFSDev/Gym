@@ -24,7 +24,7 @@ export async function up(knex) {
     table.string('name', 100).notNullable();
     table.text('description');
     table.decimal('price', 10, 2).notNullable();
-    table.specificType('stock_state', 'stock_status').notNullable().defaultTo('In Stock');
+    table.specificType('stock_state', 'stock_status').notNullable().defaultTo('IN_STOCK');
     table.string('image_url', 255);
     table.timestamps(true, true);
   });
@@ -74,6 +74,7 @@ await knex.schema.createTable('order_items', (table) => {
     table.integer('duration_mins').notNullable();
     table.decimal('price', 10, 2).notNullable();
     table.integer('capacity').notNullable().defaultTo(1);
+    table.timestamps(true, true);
   });
 
   // 7. Staff Availability

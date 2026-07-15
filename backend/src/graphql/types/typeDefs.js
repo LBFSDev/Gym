@@ -48,6 +48,8 @@ const typeDefs = gql`
     price: Float!
     stockState: StockStatus!
     imageUrl: String
+    createdAt: String 
+    updatedAt: String 
   }
 
   type CartItem {
@@ -59,6 +61,7 @@ const typeDefs = gql`
 
   type OrderItem {
     orderItemId: ID!
+    orderId:ID!
     product: Product
     quantity: Int!
     unitPrice: Float!
@@ -80,6 +83,8 @@ const typeDefs = gql`
     durationMins: Int!
     price: Float!
     capacity: Int!
+    createdAt:String 
+    updatedAt: String 
   }
 
   type StaffAvailability {
@@ -104,6 +109,23 @@ const typeDefs = gql`
     token: String!
     user: User!
   }
+
+
+  input ProductInput {
+  name: String!
+  description: String
+  price: Float!
+  stockState: StockStatus!
+  imageUrl: String
+}
+
+input ServiceInput {
+  name: String!
+  description: String
+  price: Float!
+  duration: String!
+  imageUrl: String
+}
 `;
 
 export default typeDefs;

@@ -1,0 +1,177 @@
+
+.productspage{
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+    width: 100%;
+}   
+
+
+.body{
+    background:#f4f4f4;
+    color:#222;
+    width:100%;
+}
+
+
+
+header{
+
+    background:#111;
+    color:white;
+    padding:20px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+}
+
+
+nav a{
+
+    color:white;
+    margin:15px;
+    text-decoration:none;
+    font-weight:bold;
+
+}
+
+
+.heroa{
+
+    background:#e63946;
+    color:white;
+    padding:50px;
+    text-align:center;
+
+}
+
+
+.titlea{
+
+    text-align:center;
+    margin:30px;
+
+}
+
+
+
+.product-containera,
+.service-containera{
+
+    display:flex;
+    justify-content:center;
+    gap:25px;
+    flex-wrap:wrap;
+
+}
+
+
+
+.producta,
+.servicea{
+
+    background:white;
+    width:260px;
+    height:400px;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 5px 15px #ccc;
+    text-align:center;
+
+}
+
+
+
+.product img{
+
+    width:100%;
+    border-radius:10px;
+
+}
+
+
+.producta span{
+
+    display:block;
+    font-size:22px;
+    color:#e63946;
+    margin:10px;
+
+}
+
+
+
+button{
+
+    background:#111;
+    color:white;
+    border:none;
+    padding:12px 20px;
+    border-radius:8px;
+    cursor:pointer;
+
+}
+
+
+button:hover{
+
+    background:#e63946;
+
+}
+
+
+
+
+.cart-boxa{
+
+    background:white;
+    width:80%;
+    margin:auto;
+    padding:30px;
+    border-radius:15px;
+
+}
+
+
+#cartItems li{
+
+    list-style:none;
+    padding:10px;
+    border-bottom:1px solid #ddd;
+
+}
+
+
+
+.remove{
+
+    background:red;
+    padding:5px 10px;
+    margin-left:20px;
+
+}
+
+
+
+section{
+
+    padding:30px;
+
+}
+
+
+
+
+footer{
+
+    background:#111;
+    color:white;
+    text-align:center;
+    padding:20px;
+
+}
+
+}

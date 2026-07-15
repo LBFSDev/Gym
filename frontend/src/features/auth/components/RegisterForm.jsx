@@ -4,7 +4,7 @@ import { useMutation } from "@apollo/client/react";
 import { useAuth } from '../AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
-import './style.css'
+import '../../../styles/Login.css'
 
 const REGISTER_MUTATION = gql`
   mutation register($email: String!, $password: String!) {

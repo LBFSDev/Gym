@@ -4,7 +4,7 @@ import { useMutation } from "@apollo/client/react";
 import { useAuth } from '../AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
-import './style.css'
+import './Login.css'
 
 const LOGIN_MUTATION = gql`
   mutation Login($email: String!, $password: String!) {
@@ -29,8 +29,14 @@ export const LoginForm = () => {
 
   const [loginUser, { loading, error }] = useMutation(LOGIN_MUTATION, {
     onCompleted: (data) => {
+      const user = data.login.user;
       login(data.login.token, data.login.user);
-      navigate('/'); // Go to profile or dashboard
+    if (user.role === 'customer') {
+      navigate('/products');
+      // navigate('/Dashboard');
+    } else if (user.role === 'admin') {
+      navigate('/admindashboard');
+    }
     },
   });
 
