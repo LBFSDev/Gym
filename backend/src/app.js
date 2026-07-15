@@ -1,33 +1,105 @@
 // src/app.js
-import 'dotenv/config';
-import { ApolloServer } from '@apollo/server';
-import  { startStandaloneServer }  from '@apollo/server/standalone';
-import  typeDefs  from './graphql/schema/schema.js';
-import  resolvers  from './graphql/resolvers/resolvers.js';
-import  db  from './config/db.js'; // Your Knex connection instance
+import "dotenv/config";
+
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
+
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@as-integrations/express5";
+
+import typeDefs from "./graphql/schema/schema.js";
+import resolvers from "./graphql/resolvers/resolvers.js";
+import db from "./config/db.js";
+import { getContext } from "./auth/auth.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+/* ===========================
+   Multer Configuration
+=========================== */
+
+const storage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, path.join(__dirname, "../uploads/products"));
+  },
+
+  filename(req, file, cb) {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+/* ===========================
+   Static Images
+=========================== */
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "../uploads"))
+);
+
+/* ===========================
+   Upload Endpoint
+=========================== */
+
+app.post(
+  "/upload/product-image",
+  upload.single("image"),
+  (req, res) => {
+    console.log(req.file);
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No image uploaded",
+      });
+    }
+
+    res.json({
+      url: `http://localhost:4000/uploads/products/${req.file.filename}`,
+    });
+  }
+);
+
+/* ===========================
+   Apollo Server
+=========================== */
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
 
-async function startServer() {
-  const { url } = await startStandaloneServer(server, {
-    listen: { port: 4000 },
-    // Inject db connection here so it's globally accessible in resolvers
+await server.start();
+
+app.use(
+  "/graphql",
+  expressMiddleware(server, {
     context: async ({ req }) => {
-      // You can also handle JWT user authentication here!
-      try{
-      return { db };
-      }catch(err){
-        console.log(err);
-      }
+      const authContext = await getContext({ req });
+
+      return {
+        db,
+        ...authContext,
+      };
     },
-  });
+  })
+);
 
-  
+/* ===========================
+   Start Server
+=========================== */
 
-  console.log(`🚀 Gym GraphQL Server ready at ${url}`);
-}
-
-startServer();
+app.listen(4000, () => {
+  console.log("🚀 GraphQL: http://localhost:4000/graphql");
+  console.log("📸 Upload : http://localhost:4000/upload/product-image");
+});

@@ -7,6 +7,7 @@ export const queryAndmutation = gql`
   type Query {
     # Products & Cart
     products: [Product!]!
+    product(id: ID!): Product
     viewCart: [CartItem!]!
     
     # Orders
@@ -15,6 +16,7 @@ export const queryAndmutation = gql`
     
     # Services & Bookings
     services: [Service!]!
+    service(id: ID!): Service
     availableSlots(serviceId: ID!): [StaffAvailability!]!
     myBookings: [Booking!]! # Customers manage/view their own
     allBookings: [Booking!]! # Admins manage all
@@ -25,12 +27,25 @@ export const queryAndmutation = gql`
   # Entry Points for mutating/changing data
   type Mutation {
     # Shopping Cart & Checkout
-    addToCart(productId: ID!, quantity: Int!): CartItem!
-    checkoutCart: Order!
+    addToCart(productId: ID!): CartItem!
+    removeFromCart(productId:ID!):CartItem!
+    checkout:Order!
+    cancelOrder(orderId: ID!): Order!
     
     # Order Admin Management
     updateOrderStatus(orderId: ID!, state: OrderStatus!): Order!
     updateOrderPaymentStatus(orderId: ID!, state: PaymentStatus!): Order!
+
+    # Admin Product Mutations
+    createProduct(input: ProductInput!): Product!
+    updateProduct(id: ID!, input: ProductInput!): Product!
+    deleteProduct(id: ID!): Boolean!
+
+
+    # Admin Service Mutations
+    createService(input: ServiceInput!): Service!
+    updateService(id: ID!, input: ServiceInput!): Service!
+    deleteService(id: ID!): Boolean!
 
     # Bookings & Reservations
     createBooking(slotId: ID!): Booking!
