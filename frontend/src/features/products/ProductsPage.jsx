@@ -156,7 +156,132 @@ const CancelOrder = gql`
 `;
 
 
+const SERVICES = gql`
+query SERVICES{
+services{
+    serviceId
+    name
+    description
+    durationMins
+    price
+    capacity
+    createdAt
+    updatedAt
+}
 
+}
+`
+
+const AVAILABLE_STAFFS = gql`
+query AVAILABLE_STAFFS($serviceId: ID!){
+
+availableStaffs(serviceId:$serviceId){
+    slot_id
+    staff{
+    user_id
+    email
+    role
+    }
+    service{
+    serviceId
+    name
+    description
+    durationMins
+    price
+    capacity
+    }
+    startTime
+    endTime
+}
+}
+
+`;
+
+
+const Booking=  gql`
+  mutation Booking($slotId: ID!) {
+    createBooking(slotId: $slotId) {
+    booking_id
+    user{
+    user_id
+    email
+    role
+    }
+    slot{
+    slot_id
+    staff{
+    user_id
+    email
+    role
+    }
+    service{
+    serviceId
+    name
+    description
+    durationMins
+    price
+    capacity
+    createdAt
+    updatedAt
+    }
+    startTime
+    endTime
+    }
+    bookingState
+    paymentState
+    createdAt
+    }
+  }
+`;
+
+
+
+const MY_BOOKINGS = gql`
+query MY_BOOKINGS{
+
+myBookings{
+    bookingId
+    user{
+    user_id
+    email
+    role
+    }
+    slot{
+    slot_id
+    staff{
+    user_id
+    email
+    role
+    }
+    service{
+    serviceId
+    name
+    description
+    durationMins
+    price
+    capacity
+    createdAt 
+    updatedAt
+    }
+    start_time
+    end_time
+    
+    }
+    bookingState
+    paymentState
+    createdAt
+}
+}
+
+`;
+
+
+
+const DeleteBooking = gql`
+  mutation DeleteBooking($booking_id: ID!) {
+    deleteBooking(booking_id: $booking_id)
+  }
+`;
 
 
 
@@ -225,6 +350,78 @@ const {
     refetch: refetchCart
 } = useQuery(ViewCart);
 
+
+//Staffs_available
+const [selectedService, setSelectedService] = useState(null);
+const { 
+    data: staffsData, 
+    loading: staffsLoading,
+    error: staffsError,
+    refetch: refetchStaffs
+} = useQuery(AVAILABLE_STAFFS, {
+    variables: {
+        serviceId: selectedService?.serviceId
+    },
+    skip: !selectedService
+});
+
+
+//My_Bookings
+const {
+  data: MybookingData,
+  loading: MybookingLoading,
+  error: MybookingError,
+  refetch: refetchMybooking
+} = useQuery(MY_BOOKINGS);
+
+
+
+//New Booking
+const [bookingTime, setBookingTime] = useState("");
+const [createBooking, {data: bookData, loading: bookLoading, error: bookError}] = useMutation(Booking,{
+    onCompleted:()=>{
+        refetchMybooking;
+    },
+    onError:(error)=>{
+        console.log(error.graphQLErrors);
+        console.log(error.networkError);
+    }
+});
+
+
+
+
+
+//Services
+const { 
+    data: servicesData, 
+    loading: servicesLoading, 
+    error: servicesError,
+    refetch: refetchServices
+} = useQuery(SERVICES);
+
+
+
+useEffect(() => {
+  
+refetchMybooking;
+}, [createBooking]);
+
+const [bookingDate, setBookingDate] = useState("");
+
+
+const [selectedStaffId, setSelectedStaffId] = useState("");
+
+const [requestedPlaces, setRequestedPlaces] = useState(1);
+
+const [errorMessage, setErrorMessage] = useState("");
+
+const [successMessage, setSuccessMessage] = useState("");
+
+
+
+
+
 const [cancelOrder] = useMutation(CancelOrder,{
     onCompleted:()=>{
         refetchOrders();
@@ -235,6 +432,85 @@ const [cancelOrder] = useMutation(CancelOrder,{
     }
 });
 
+
+
+
+const [deletebook] = useMutation(DeleteBooking,{
+    onCompleted:()=>{
+        refetchMybooking();
+
+    },
+    onError:(error)=>{
+        console.log(error.graphQLErrors);
+        console.log(error.networkError);
+    }
+});
+
+//Booking operations
+const handleCreateBooking = async (e) => {
+    
+    e.preventDefault();
+
+    if (!bookingTime) {
+        setErrorMessage("Please select a time slot");
+        return;
+    }
+
+    try {
+
+        const result = await createBooking({
+            variables:{
+                slotId: bookingTime
+            }   , onCompleted:()=>{
+        refetchMybooking();
+      
+    },
+        });
+       
+
+        console.log("Booking created:", result.data);
+
+        setSuccessMessage("Booking created successfully");
+
+    } catch(err) {
+
+        console.log(err);
+        setErrorMessage(
+            err.message
+        );
+
+    }
+};
+
+
+const handleDeleteBooking = async (bookingid)=>{
+  try{
+         const result = await deletebook({
+            variables:{
+                booking_id: bookingid
+            }
+        });
+    
+  }catch(err){
+    console.log(err);
+  }
+
+}
+
+
+//Staff members mock
+const STAFF_MEMBERS = [
+    {
+        id: 1,
+        name: "John",
+        specialty: "Strength"
+    },
+    {
+        id: 2,
+        name: "Sarah",
+        specialty: "Yoga"
+    }
+];
 
   const handleAddToCart = async(productId) => {
 console.log("Product ID:", productId);
@@ -325,6 +601,13 @@ const handleCancelOrder = async(orderId) => {
 
 ) || 0;
 
+
+// useEffect(() => {
+//   console.log("selectedService:", selectedService);
+//   console.log("staffsLoading:", staffsLoading);
+//   console.log("staffsError:", staffsError);
+//   console.log("staffsData:", staffsData);
+// }, [selectedService, staffsLoading, staffsError, staffsData]);
 
 
 
@@ -548,53 +831,6 @@ Checkout
 
 
 
-<section id="services">
-
-<h2 class="titlea">Gym Services</h2>
-
-
-<div class="service-containera">
-
-
-<div class="servicea">
-
-<h3>Personal Training</h3>
-<p>One-on-one training with certified coaches.</p>
-<button onclick="bookService('Personal Training')">
-Book Now
-</button>
-
-</div>
-
-
-
-<div class="servicea">
-
-<h3>Nutrition Coaching</h3>
-<p>Customized meal plans for your goals.</p>
-<button onclick="bookService('Nutrition Coaching')">
-Book Now
-</button>
-
-</div>
-
-
-
-<div class="servicea">
-
-<h3>Body Assessment</h3>
-<p>Professional body composition analysis.</p>
-<button onclick="bookService('Body Assessment')">
-Book Now
-</button>
-
-</div>
-
-
-</div>
-
-</section>
-
 
 {/*Manage Orders */}
 <section style={{textAlign:'center',width:"fit-content" ,alignContent:'center', alignItems:'center',textAlign:'center'}}>
@@ -664,6 +900,308 @@ Book Now
       </table>
     </div>
 </section>
+
+
+
+
+{/* 
+<section id="services">
+
+<h2 class="titlea">Gym Services</h2>
+
+
+<div class="service-containera">
+
+
+<div class="servicea">
+
+<h3>Personal Training</h3>
+<p>One-on-one training with certified coaches.</p>
+<button onclick="bookService('Personal Training')">
+Book Now
+</button>
+
+</div>
+
+
+
+<div class="servicea">
+
+<h3>Nutrition Coaching</h3>
+<p>Customized meal plans for your goals.</p>
+<button onclick="bookService('Nutrition Coaching')">
+Book Now
+</button>
+
+</div>
+
+
+
+<div class="servicea">
+
+<h3>Body Assessment</h3>
+<p>Professional body composition analysis.</p>
+<button onclick="bookService('Body Assessment')">
+Book Now
+</button>
+
+</div>
+
+
+</div>
+
+</section> */}
+
+        {/* ================= LEFT SIDE: SERVICES LIST & BOOKING FORM ================= */}
+        <section className="services-column" id="services"style={{alignContent:'center',alignItems:'center',textAlign:'center'}} >
+          <h3>Available Services</h3>
+          <div  style={{display:'flex',flexDirection:'row', flexWrap: 'wrap', gap: '20px'}} >
+            {servicesData?.services?.map(service => (
+              <div key={service.serviceId} style={{width:'400px' ,height:'200px'}}>
+                <div className="service-header">
+                  <h4   style={{
+    width: "400px",
+    height: "24px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    margin: 0,
+  }}>{service.name}</h4>
+                  <span className="service-price">${service.price.toFixed(2)}</span>
+                </div>
+                <p   style={{
+    height: "48px", // 2 lines
+    overflow: "hidden",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    margin: "10px 0",
+  }}>{service.description}</p>
+                <div className="service-metadata">
+                  <span><strong>Duration:</strong> {service.durationMins}</span>
+                  <span>
+                    <strong>Type:</strong> { `Group Class (Max Capacity: ${service.capacity})`}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => { setSelectedService(service); 
+                      setBookingTime("");
+                    setErrorMessage("");
+                  setSuccessMessage("");
+                  console.log("Selected service:", service);setErrorMessage(''); setSuccessMessage(''); }}
+                  className="btn-select-service"
+                >
+                  Book Service
+                </button>
+              </div>
+            ))}
+          </div>
+
+
+          
+
+          {/* Dynamic Booking Window */}
+          {selectedService && (
+            <div className="booking-form-modal">
+                 <h4>Book: {selectedService.name}</h4>
+
+           
+              <form onSubmit={handleCreateBooking} className="booking-form">
+                                {/* Conditional fields based on booking strategy */}
+                {selectedService ? (
+                  <div className="form-group">
+<label>Select Staff Member:</label>
+
+<select
+  required
+  value={selectedStaffId}
+  onChange={e => setSelectedStaffId(e.target.value)}
+>
+
+<option value="">
+  -- Choose Staff --
+</option>
+
+
+{
+  [...new Map(
+    staffsData?.availableStaffs
+      ?.filter(st => st.service.serviceId === selectedService.serviceId)
+      .map(st => [st.staff.user_id, st])
+  ).values()]
+  .map(st => (
+    <option
+      key={st.staff.user_id}
+      value={st.staff.user_id}
+    >
+      {st.staff.email}
+    </option>
+  ))
+}
+
+
+</select>
+
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Number of Places (Max {selectedService.capacity}):</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max={selectedService.capacity} 
+                      value={requestedPlaces} 
+                      onChange={e => setRequestedPlaces(e.target.value)} 
+                    />
+                  </div>
+                )}
+                
+                {/* <div className="form-group">
+                  <label>Select Date:</label>
+                  <input type="date" required value={bookingDate} onChange={e => setBookingDate(e.target.value)} />
+                </div> */}
+
+                    {selectedStaffId ?
+                <div className="form-group">
+                  <label>Select Time:</label>
+                  <select required value={bookingTime} onChange={e => {console.log("Selected slot:", e.target.value); setBookingTime(e.target.value)}}>
+              <option>choose a time</option>
+              {staffsData?.availableStaffs?.filter(st => st.service.serviceId === selectedService.serviceId &&  String(st.staff.user_id) === String(selectedStaffId)).map(st => (
+                       
+                        <option key={st.slot_id} value= {st.slot_id} >{new Date(Number(st.startTime)).toLocaleString("en-GB", {
+  timeZone: "Asia/Beirut",
+  hour12: false
+})}--- {new Date(Number(st.endTime)).toLocaleString("en-GB", {
+  timeZone: "Asia/Beirut",
+  hour12: false
+})}</option>
+                        
+                      ))}
+                  </select>
+                </div>:null}
+
+              
+
+                {errorMessage && <div className="error-alert">{errorMessage}</div>}
+                {successMessage && <div className="success-alert">{successMessage}</div>}
+
+                <div className="form-actions">
+                  <button type="submit" className="btn-confirm-booking">Request Booking</button>
+                  <button type="button" className="btn-cancel-modal" onClick={() => setSelectedService(null)}>Cancel</button>
+                </div>
+              </form>
+            </div>
+          )}
+        </section>
+
+
+
+
+
+
+
+
+
+
+<section style={{textAlign:'center',width:"fit-content" ,alignContent:'center', alignItems:'center',textAlign:'center'}}>
+{   MybookingLoading && <p>Loading bookings...</p>}
+{
+MybookingError &&  <p>Error loading bookings</p>
+}
+
+{console.log(MybookingError)}
+
+
+
+
+
+{MybookingData && (
+  
+  <div style={{ marginTop: "30px" }}>
+    <h3>Booking Details</h3>
+
+    <table
+      border="1"
+      cellPadding="10"
+   style={{width:"100%",borderSpacing:"20px 10px",backgroundColor:"white" , marginLeft:'0px'}}
+    >
+      <thead>
+        <tr>
+          <th>Booking ID</th>
+          <th>Service</th>
+          <th>Trainer</th>
+          <th>Customer</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Status</th>
+          <th>Payment</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+     <tbody style={{whiteSpace:'break-spaces'}}>
+  {MybookingData.myBookings.map((booking) => (
+    <tr key={booking.bookingId}>
+      <td>{booking.bookingId}</td>
+
+      <td>{booking.slot.service.name}</td>
+
+      <td>{booking.slot.staff.email}</td>
+
+      <td>{booking.user.email}</td>
+
+      <td>
+        {new Date(Number(booking.slot.start_time)).toLocaleString("en-GB", {
+          timeZone: "Asia/Beirut",
+        })}
+      </td>
+
+      <td>
+        {new Date(Number(booking.slot.end_time)).toLocaleString("en-GB", {
+          timeZone: "Asia/Beirut",
+        })}
+      </td>
+
+      <td>{booking.bookingState}</td>
+
+      <td>{booking.paymentState}</td>
+
+      <td>
+        {new Date(Number(booking.createdAt)).toLocaleString("en-GB", {
+          timeZone: "Asia/Beirut",
+        })}
+      </td>
+      <td><button onClick={()=>handleDeleteBooking(booking.bookingId)}>Delete</button></td>
+    </tr>
+  ))}
+</tbody>
+    </table>
+  </div>
+)}
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 </div>
 
 

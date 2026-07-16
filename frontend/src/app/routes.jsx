@@ -6,7 +6,7 @@ import{ RegisterForm} from '../features/auth/components/RegisterForm'
 import {ProtectedRoute} from '../components/ProtectedRoute.jsx'
 import ProductsPage from '../features/products/ProductsPage.jsx';
 import ProductDetailsPage from '../features/products/ProductsDetailsPage.jsx';
-import ServicesPage from '../features/services/ServicesPage.jsx';
+import Services from '../features/services/services.jsx';
 import AdminProductDashboard from '../features/admin/AdminProductDashboard.jsx';
 
 // Core Shell Blueprint Setup
@@ -51,7 +51,7 @@ export default function AppRoutes() {
           path="/services" 
           element={
             <ProtectedRoute>
-              <ServicesPage />
+              <Services />
             </ProtectedRoute>
           } 
         />

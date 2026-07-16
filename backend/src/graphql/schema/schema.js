@@ -17,10 +17,12 @@ export const queryAndmutation = gql`
     # Services & Bookings
     services: [Service!]!
     service(id: ID!): Service
-    availableSlots(serviceId: ID!): [StaffAvailability!]!
-    myBookings: [Booking!]! # Customers manage/view their own
+    availableStaffs(serviceId: ID!): [StaffAvailability!]!
+    myBookings: [Booking_By_ID!]! # Customers manage/view their own
     allBookings: [Booking!]! # Admins manage all
     me: User
+
+
   
   }
 
@@ -50,6 +52,7 @@ export const queryAndmutation = gql`
     # Bookings & Reservations
     createBooking(slotId: ID!): Booking!
     updateBookingStatus(bookingId: ID!, state: BookingStatus!): Booking! # Admins/Staff
+    deleteBooking(booking_id: ID!): Boolean!
     updateBookingPaymentStatus(bookingId: ID!, state: PaymentStatus!): Booking! # Admins
   
     #Authentication & Role-Based Authorization

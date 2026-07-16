@@ -88,17 +88,35 @@ const typeDefs = gql`
   }
 
   type StaffAvailability {
-    slotId: ID!
+    slot_id: ID
+    staff: User
+    service: Service
+    startTime: String
+    endTime: String
+  }
+
+
+  type staff_table_attributes{
+    slot_id: ID!
     staff: User!
     service: Service!
-    startTime: String!
-    endTime: String!
+    start_time: String!
+    end_time: String!
+  }
+
+    type Booking_By_ID {
+    bookingId: ID!
+    user: User!
+    slot: staff_table_attributes!
+    bookingState: BookingStatus!
+    paymentState: PaymentStatus!
+    createdAt: String!
   }
 
   type Booking {
-    bookingId: ID!
+    booking_id: ID!
     user: User!
-    slot: StaffAvailability!
+    slot: StaffAvailability 
     bookingState: BookingStatus!
     paymentState: PaymentStatus!
     createdAt: String!
