@@ -21,7 +21,53 @@ export default {
     service: async (_, { id }) => {
       return knex('services').where({service_id:id }).first();
     },
+availableStaffs: async (_, { serviceId }) => {
 
+  const rows = await knex("staff_availability as sa")
+    .join("users as u", "sa.staff_id", "u.user_id")
+    .join("services as s", "sa.service_id", "s.service_id")
+    .where("sa.service_id", serviceId)
+    .where("u.role", "staff")
+    .select(
+      "sa.slot_id as slot_id",
+      "sa.start_time as startTime",
+      "sa.end_time as endTime",
+
+      "u.user_id as staffId",
+      "u.email as staffEmail",
+      "u.role as staffRole",
+
+      "s.service_id as serviceId",
+      "s.name as serviceName",
+      "s.description as serviceDescription",
+      "s.price as servicePrice",
+      "s.duration_mins as durationMins",
+      "s.capacity as capacity"
+
+    );
+console.log(rows);
+
+  return rows.map(row => ({
+    slot_id: row.slot_id,
+    startTime: row.startTime,
+    endTime: row.endTime,
+
+    staff: {
+      user_id: row.staffId,
+      email: row.staffEmail,
+      role: row.staffRole
+    },
+
+    service: {
+      serviceId: row.serviceId,   // <-- changed
+      name: row.serviceName,
+      description: row.serviceDescription,
+      price: row.servicePrice,
+      durationMins: row.durationMins,
+      capacity: row.capacity
+    }
+  }));
+},
     viewCart: async (_, __, context) => {
       // Mocked user ID; normally extracted from auth context
       const userId = context.currentUser?.id || 1; 
@@ -41,6 +87,13 @@ export default {
         .orderBy("created_at", "desc");
 
       return orders;
+
+},
+myBookings: async(_,__,context)=>{
+const userId = context.currentUser?.id;
+console.log("my bookings userid : "+context.currentUser?.id)
+const books = await knex("bookings").where({user_id:userId}).orderBy("created_at","desc");
+return books ;
 
 }
     ,me: async (_, __, context) => {
@@ -93,7 +146,18 @@ export default {
       requireRoles(context,["admin"]);
       const deletedRows = await knex('products').where({ product_id:id }).del();
       return deletedRows > 0;
-    },// --- Service Admin Mutations ---
+    },
+    
+    deleteBooking: async (_, { booking_id }, context) => {
+        const user = context.currentUser?.id;
+        const deletedRows = await knex('bookings').where({ booking_id:booking_id }).del();
+        return deletedRows>0;
+
+
+    }
+
+    ,
+    // --- Service Admin Mutations ---
     createService: async (_, { input }, context) => {
       requireRoles(context,["admin"]);
       if (input.price < 0) throw new UserInputError('Price cannot be negative');
@@ -297,26 +361,81 @@ cancelOrder: async (_, { orderId }, context) => {
 }
 ,
 
-    createBooking: async (_, { slotId }, context) => {
-      const userId = context.currentUser?.id || 1;
+createBooking: async (_, { slotId }, context) => {
+  console.log(context.currentUser);
+const user = context.currentUser?.id;
+  if (!user) {
+    throw new Error("Authentication required");
+  }
 
-      // PostgreSQL database-level unique index (from our schema step) and trigger 
-      // will handle the hard checks (no double booking, capacity limits).
-      // We wrap it in a try-catch to display the Postgres error nicely to the user.
-      try {
-        const [booking] = await knex('bookings')
-          .insert({
-            user_id: userId,
-            slot_id: slotId,
-            booking_state: 'pending',
-            payment_state: 'Unpaid'
-          })
-          .returning('*');
-        return booking;
-      } catch (error) {
-        throw new Error(`Booking failed: ${error.message}`);
-      }
-    },
+
+  return await knex.transaction(async trx => {
+
+    // Get slot + service capacity
+    const slot = await trx("staff_availability as sa")
+      .join("services as s", "sa.service_id", "s.service_id")
+      .where("sa.slot_id", slotId)
+      .select(
+        "sa.slot_id",
+        "sa.service_id",
+        "s.capacity"
+      )
+      .forUpdate()
+      .first();
+
+
+    if (!slot) {
+      throw new Error("Slot not found");
+    }
+
+
+    // Prevent same customer booking same service twice
+    const duplicate = await trx("bookings as b")
+      .join(
+        "staff_availability as sa",
+        "b.slot_id",
+        "sa.slot_id"
+      )
+      .where("b.user_id", user)
+      .where("sa.service_id", slot?.service_id)
+      .whereNot("b.booking_state", "cancelled")
+      .first();
+
+
+    if (duplicate) {
+      throw new Error("You already booked this service");
+    }
+
+
+
+    // Capacity check
+    const result = await trx("bookings")
+      .where("slot_id", slotId)
+      .whereNot("booking_state", "cancelled")
+      .count("* as total");
+
+
+    if (Number(result[0].total) >= slot.capacity) {
+      throw new Error("This slot is full");
+    }
+
+
+
+    const [booking] = await trx("bookings")
+      .insert({
+        user_id: user,
+        slot_id: slotId,
+        booking_state: "pending",
+        payment_state: "Unpaid"
+      })
+      .returning("*");
+
+
+    return booking;
+
+  });
+
+},
     register: async (_, { email, password, role = 'customer' }) => {
       // 1. Check if email exists
       const existingUser = await knex('users').where({ email }).first();
@@ -384,10 +503,31 @@ cancelOrder: async (_, { orderId }, context) => {
     productId : (parent) => parent.product_id
 
   },
-  Service: {
-    createdAt: (parent) => parent.created_at,
-    updatedAt: (parent) => parent.updated_at,
-  },
+// Service: {
+//     serviceId: (parent) => parent.service_id,
+//     durationMins: (parent) => parent.duration_mins,
+//     createdAt: (parent) => parent.created_at,
+//     updatedAt: (parent) => parent.updated_at,
+// },
+ Service: {
+  serviceId: (parent) =>
+    parent.service_id ?? parent.serviceId,
+
+  name: (parent) =>
+    parent.name ?? parent.serviceName,
+
+  description: (parent) =>
+    parent.description ?? parent.serviceDescription,
+
+  price: (parent) =>
+    parent.price ?? parent.servicePrice,
+
+  durationMins: (parent) =>
+    parent.duration_mins ?? parent.durationMins,
+
+  capacity: (parent) =>
+    parent.capacity ?? parent.serviceCapacity,
+},
 
   // Relationship Resolvers (How GraphQL nests types dynamically)
   CartItem: {
@@ -423,4 +563,67 @@ cancelOrder: async (_, { orderId }, context) => {
       .first();
   }
 },
+
+
+Booking_By_ID: {
+  bookingId: (parent) => parent.booking_id,
+  bookingState: (parent) => parent.booking_state,
+  paymentState: (parent) => parent.payment_state,
+  createdAt: (parent) => parent.created_at,
+
+  user: async (parent) => {
+    return await knex("users")
+      .where({ user_id: parent.user_id })
+      .first();
+  },
+
+  slot: async (parent) => {
+    return await knex("staff_availability")
+      .where({ slot_id: parent.slot_id })
+      .first();
+  },
+
+},
+
+staff_table_attributes: {
+  slot_id: p => p.slot_id,
+  start_time: p => p.start_time,
+  end_time: p => p.end_time,
+
+  staff: async p =>
+    knex("users").where({ user_id: p.staff_id }).first(),
+
+  service: async p =>
+    knex("services").where({ service_id: p.service_id }).first(),
+},
+
+Booking: {
+  bookingState: (parent) => parent.booking_state,
+  paymentState: (parent) => parent.payment_state,
+  createdAt: (parent) => parent.created_at,
+
+  user: async (parent) => {
+    return await knex("users")
+      .where({ user_id: parent.user_id })
+      .first();
+  },
+
+  slot: async (parent) => {
+    return await knex("staff_availability")
+      .where({ slot_id: parent.slot_id })
+      .first();
+  },
+
+},
+
+StaffAvailability: {
+  slot_id: parent => parent.slot_id,
+  startTime: parent => parent.startTime,
+  endTime: parent => parent.endTime,
+
+  staff: parent => parent.staff,
+  service: parent => parent.service,
+},
+
+
 };

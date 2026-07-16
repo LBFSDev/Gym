@@ -94,7 +94,6 @@ await knex.schema.createTable('order_items', (table) => {
     table.specificType('booking_state', 'booking_status').notNullable().defaultTo('pending');
     table.specificType('payment_state', 'payment_status').notNullable().defaultTo('Unpaid');
     table.timestamps(true, true);
-    table.unique(['slot_id']);
   });
 
   // 9. Add custom Postgres constraints & triggers (Filtered unique index)

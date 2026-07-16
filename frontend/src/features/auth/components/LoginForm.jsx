@@ -88,7 +88,7 @@ export const LoginForm = () => {
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <div className="input-wrapper">
-                <span className="input-icon">✉</span>
+                <span className="input-icon">✉</span>&nbsp;&nbsp;&nbsp;&nbsp;
                 <input
                   type="email"
                   required
@@ -106,7 +106,7 @@ export const LoginForm = () => {
                 <label className="form-label">Password</label>
               </div>
               <div className="input-wrapper password-wrapper">
-                <span className="input-icon">🔒</span>
+                <span className="input-icon">🔒</span>&nbsp;&nbsp;&nbsp;&nbsp;
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
