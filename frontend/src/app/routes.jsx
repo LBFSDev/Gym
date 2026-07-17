@@ -7,7 +7,7 @@ import {ProtectedRoute} from '../components/ProtectedRoute.jsx'
 import ProductsPage from '../features/products/ProductsPage.jsx';
 import ProductDetailsPage from '../features/products/ProductsDetailsPage.jsx';
 import Services from '../features/services/services.jsx';
-import AdminProductDashboard from '../features/admin/AdminProductDashboard.jsx';
+import AdminDash from '../features/admin/AdminDash.jsx';
 
 // Core Shell Blueprint Setup
 const Layout = ({ children }) => (
@@ -62,8 +62,9 @@ export default function AppRoutes() {
         <Route 
           path="/admindashboard" 
           element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminProductDashboard />
+            <ProtectedRoute allowedRoles={['admin','staff']}>
+              {/* <AdminProductDashboard /> */}
+              <AdminDash></AdminDash>
             </ProtectedRoute>
           } 
         />

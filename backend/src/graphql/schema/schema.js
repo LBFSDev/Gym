@@ -20,7 +20,14 @@ export const queryAndmutation = gql`
     availableStaffs(serviceId: ID!): [StaffAvailability!]!
     myBookings: [Booking_By_ID!]! # Customers manage/view their own
     allBookings: [Booking!]! # Admins manage all
+    getBookings: [BookingsAdmin!]!
+   
+
     me: User
+
+    #staffs
+    getAllStaff: [Staff!]!
+    getStaffSchedule: [StaffSchedule!]!
 
 
   
@@ -45,15 +52,23 @@ export const queryAndmutation = gql`
 
 
     # Admin Service Mutations
-    createService(input: ServiceInput!): Service!
-    updateService(id: ID!, input: ServiceInput!): Service!
-    deleteService(id: ID!): Boolean!
+    addService(input: ServiceInput!): Service!
+    updateService(service_id: Int!, input: ServiceInput!): Service!
+    deleteService(service_id: Int!): Boolean!
+    assignStaffService(input: AssignStaffServiceInput!): Created_Staff
+    removeStaff(staffId:ID!):Boolean!
+    updateStaffAvailability(input: UpdateStaffServiceInput!):Update_Staff
+    addStaffAvailability(input: AssignStaffServiceInput!): New_Staff 
+    deleteStaffAvailability(slotId: Int!): Boolean!
+
 
     # Bookings & Reservations
     createBooking(slotId: ID!): Booking!
     updateBookingStatus(bookingId: ID!, state: BookingStatus!): Booking! # Admins/Staff
     deleteBooking(booking_id: ID!): Boolean!
     updateBookingPaymentStatus(bookingId: ID!, state: PaymentStatus!): Booking! # Admins
+    updateBooking(bookingId: Int!,input: UpdateBookingInput!): BookingUpdate
+   
   
     #Authentication & Role-Based Authorization
     register(email: String!, password: String!): AuthPayload!

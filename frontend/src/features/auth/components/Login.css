@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* --- CSS CUSTOM VARIABLES --- */
-:root {
+.Login {
   --color-bg: #09090b;             /* Pure deep onyx base */
   --color-card-bg: rgba(20, 20, 23, 0.65); /* Translucent obsidian plate */
   --color-border: rgba(255, 255, 255, 0.08); /* Sophisticated sharp edge */
@@ -26,13 +26,13 @@
 }
 
 /* --- DOCUMENT DEFAULTS --- */
-* {
+.Login{
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body {
+.Login {
   background-color: var(--color-bg);
   color: var(--color-text-body);
   font-family: var(--font-family);

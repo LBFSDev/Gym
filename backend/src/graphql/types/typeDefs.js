@@ -121,7 +121,29 @@ const typeDefs = gql`
     paymentState: PaymentStatus!
     createdAt: String!
   }
+
+  type BookingsAdmin {
+  bookingId: Int!
+  userEmail: String!
+  service: String!
+  trainer: String!
+  startTime: String!
+  endTime: String!
+  bookingState: String!
+  paymentState: String!
+}
     
+
+type BookingUpdate{
+
+        bookingId:ID!
+        userId:ID!
+        slotId:ID!
+        bookingState:BookingStatus!
+        paymentState:PaymentStatus!
+        createdAt:String!
+
+}
 
   type AuthPayload {
     token: String!
@@ -140,10 +162,90 @@ const typeDefs = gql`
 input ServiceInput {
   name: String!
   description: String
+  durationMins: Int!
   price: Float!
-  duration: String!
-  imageUrl: String
+  capacity: Int!
 }
+
+
+
+type service_staff {
+  service_id: Int
+  service_name: String
+}
+
+
+
+type Staff {
+  user_id: Int!
+  email: String!
+  role: String!
+  created_at: String!
+  services: [service_staff]
+}
+
+
+input AssignStaffServiceInput {
+  staffId: Int!
+  serviceId: Int!
+  startTime: String!
+  endTime: String!
+}
+
+
+  
+
+input UpdateStaffServiceInput {
+  slotId: Int!
+  staffId: Int!
+  serviceId: Int!
+  startTime: String!
+  endTime: String!
+}
+
+type Created_Staff {
+  staffId: Int!
+  email: String!
+  serviceName: String!
+  startTime: String!
+  endTime: String!
+}
+
+type Update_Staff {
+  staffId: ID!
+  email: String!
+  serviceId: ID!
+  serviceName: String!
+  startTime: String!
+  endTime: String!
+}
+
+type New_Staff {
+  staffId: Int!
+  email: String!
+  serviceId: String!
+  startTime: String!
+  endTime: String!
+}
+
+
+type StaffSchedule {
+  slotId: Int!
+  staffId: Int!
+  staff: String!
+  serviceId: Int!
+  serviceName: String!
+  startTime: String!
+  endTime: String!
+}
+
+
+input UpdateBookingInput {
+  bookingState: BookingStatus
+  paymentState: PaymentStatus
+}
+
+
 `;
 
 export default typeDefs;

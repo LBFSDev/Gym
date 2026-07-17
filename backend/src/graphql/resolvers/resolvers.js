@@ -12,6 +12,51 @@ export default {
     products: async () => {
       return knex('products').select('*').orderBy('created_at', 'desc');
     },
+
+
+    getAllStaff: async (_, __, context) => {
+      try {
+        requireRoles(context,["admin","staff"]);
+        const staffs = await knex('users')
+          .select(
+            'users.user_id',
+            'users.email',
+            'users.role',
+            'users.created_at',
+            knex.raw(`
+              json_agg(
+                DISTINCT jsonb_build_object(
+                  'service_id', services.service_id,
+                  'service_name', services.name
+                )
+              ) AS services
+            `)
+          )
+          .leftJoin(
+            'staff_availability',
+            'users.user_id',
+            'staff_availability.staff_id'
+          )
+          .leftJoin(
+            'services',
+            'staff_availability.service_id',
+            'services.service_id'
+          )
+          .where('users.role', 'staff')
+          .groupBy(
+            'users.user_id',
+            'users.email',
+            'users.role',
+            'users.created_at'
+          )
+          .orderBy('users.created_at', 'desc');
+
+        return staffs;
+      } catch (error) {
+        throw new Error(error.message);
+      }
+    }
+    ,
     product: async (_, { id }) => {
       return knex('products').where({ product_id:id }).first();
     },
@@ -95,6 +140,93 @@ console.log("my bookings userid : "+context.currentUser?.id)
 const books = await knex("bookings").where({user_id:userId}).orderBy("created_at","desc");
 return books ;
 
+},
+
+getBookings: async (_, __, context) => {
+  requireRoles(context, ["admin","staff"]);
+
+  try {
+    const bookings = await knex("bookings")
+      .join(
+        "users as customer",
+        "bookings.user_id",
+        "customer.user_id"
+      )
+      .join(
+        "staff_availability",
+        "bookings.slot_id",
+        "staff_availability.slot_id"
+      )
+      .join(
+        "users as trainer",
+        "staff_availability.staff_id",
+        "trainer.user_id"
+      )
+      .join(
+        "services",
+        "staff_availability.service_id",
+        "services.service_id"
+      )
+      .select(
+        "bookings.booking_id",
+        "customer.email as user_email",
+        "services.name as service",
+        "trainer.email as trainer",
+        "staff_availability.start_time",
+        "staff_availability.end_time",
+        "bookings.booking_state",
+        "bookings.payment_state"
+      )
+      .orderBy(
+        "staff_availability.start_time",
+        "asc"
+      );
+
+
+    return bookings.map((booking) => ({
+      bookingId: booking.booking_id,
+      userEmail: booking.user_email,
+      service: booking.service,
+      trainer: booking.trainer,
+      startTime: booking.start_time,
+      endTime: booking.end_time,
+      bookingState: booking.booking_state,
+      paymentState: booking.payment_state,
+    }));
+
+  } catch (error) {
+    throw new Error(error.message);
+  }
+},
+getStaffSchedule: async (_, __, context) => {
+  requireRoles(context, ["admin","staff"]);
+
+  try {
+    return await knex("staff_availability")
+      .join(
+        "users",
+        "staff_availability.staff_id",
+        "users.user_id"
+      )
+      .join(
+        "services",
+        "staff_availability.service_id",
+        "services.service_id"
+      )
+      .select(
+        "staff_availability.slot_id as slotId",
+        "users.user_id as staffId",
+        "users.email as staff",
+        "services.service_id as serviceId",
+        "services.name as serviceName",
+        "staff_availability.start_time as startTime",
+        "staff_availability.end_time as endTime"
+      )
+      .orderBy("staff_availability.start_time", "asc")
+      .orderBy("staff_availability.end_time", "asc");
+  } catch (error) {
+    throw new Error(error.message);
+  }
 }
     ,me: async (_, __, context) => {
       // Returns current user or throws an auth error
@@ -158,34 +290,106 @@ return books ;
 
     ,
     // --- Service Admin Mutations ---
-    createService: async (_, { input }, context) => {
-      requireRoles(context,["admin"]);
-      if (input.price < 0) throw new UserInputError('Price cannot be negative');
+addService: async (_, { input }, context) => {
+  requireRoles(context, ["admin"]);
 
-      const [newService] = await knex('services')
-        .insert({
-          name: input.name,
-          description: input.description,
-          price: input.price,
-          duration: input.duration,
-          image_url: input.imageUrl
-        })
-        .returning('*');
-      return newService;
-    },
+  try {
+    const service = await knex("services")
+      .insert({
+        name: input.name,
+        description: input.description,
+        duration_mins: input.durationMins,
+        price: input.price,
+        capacity: input.capacity,
+      })
+      .returning("*");
 
-    updateService: async (_, { id, input }, context) => {
+    return {
+      serviceId: service[0].service_id,
+      name: service[0].name,
+      description: service[0].description,
+      durationMins: service[0].duration_mins,
+      price: service[0].price,
+      capacity: service[0].capacity,
+      createdAt: service[0].created_at,
+      updatedAt: service[0].updated_at,
+    };
+  } catch (err) {
+    throw new Error(err.message);
+  }
+},
+updateService: async (_, { id, input }, context) => {
+  requireRoles(context, ["admin"]);
+
+  try {
+    const exists = await knex("services")
+      .where({ service_id: id })
+      .first();
+
+    if (!exists) {
+      throw new Error("Service not found");
+    }
+
+    const updated = await knex("services")
+      .where({ service_id: id })
+      .update({
+        name: input.name,
+        description: input.description,
+        duration_mins: input.durationMins,
+        price: input.price,
+        capacity: input.capacity,
+        updated_at: knex.fn.now(),
+      })
+      .returning("*");
+
+    return {
+      serviceId: updated[0].service_id,
+      name: updated[0].name,
+      description: updated[0].description,
+      durationMins: updated[0].duration_mins,
+      price: updated[0].price,
+      capacity: updated[0].capacity,
+      createdAt: updated[0].created_at,
+      updatedAt: updated[0].updated_at,
+    };
+  } catch (err) {
+    throw new Error(err.message);
+  }
+},
+deleteService: async (_, { service_id }, context) => {
+  requireRoles(context, ["admin"]);
+
+  try {
+    const exists = await knex("services")
+      .where({ service_id: service_id })
+      .first();
+
+    if (!exists) {
+      throw new Error("Service not found");
+    }
+
+    await knex("services")
+      .where({ service_id: service_id })
+      .del();
+
+    return true;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+},
+
+    updateService: async (_, { service_id, input }, context) => {
       requireRoles(context,["admin"]);
       if (input.price < 0) throw new UserInputError('Price cannot be negative');
 
       const [updatedService] = await knex('services')
-        .where({ id })
+        .where({ service_id })
         .update({
           name: input.name,
           description: input.description,
           price: input.price,
           duration: input.duration,
-          image_url: input.imageUrl,
+          capacity: input.capacity,
           updated_at: knex.fn.now()
         })
         .returning('*');
@@ -194,11 +398,7 @@ return books ;
       return updatedService;
     },
 
-    deleteService: async (_, { id }, context) => {
-      requireRoles(context,["admin"]);
-      const deletedRows = await knex('services').where({ id }).del();
-      return deletedRows > 0;
-    },
+
   
 addToCart: async (_, { productId }, context) => {
 
@@ -435,6 +635,393 @@ const user = context.currentUser?.id;
 
   });
 
+},
+ assignStaffService : async (_, { input }, context) => {
+       requireRoles(context,["admin"]);
+       try{
+  const {
+    staffId,
+    serviceId,
+    startTime,
+    endTime
+  } = input;
+
+  console.log(input);
+
+
+  return await knex.transaction(async (trx) => {
+
+    // Check that user exists and is staff
+    const user = await trx('users')
+      .where({
+        user_id: staffId,
+        role: 'customer'
+      })
+      .first();
+
+
+    if (!user) {
+      throw new Error("user not found");
+    }
+
+          // 2. Change role to staff if needed
+      if (user.role !== "staff") {
+        await trx('users')
+          .where({
+            user_id: staffId
+          })
+          .update({
+            role: "staff"
+          });
+      }
+
+
+    // Check service exists
+    const service = await trx('services')
+      .where({
+        service_id: serviceId
+      })
+      .first();
+
+
+    if (!service) {
+      throw new Error("Service not found");
+    }
+
+
+    // Add availability
+    await trx('staff_availability')
+      .insert({
+        staff_id: staffId,
+        service_id: serviceId,
+        start_time: startTime,
+        end_time: endTime
+      });
+
+
+    // Return created data
+    const result = await trx('staff_availability')
+      .join(
+        'users',
+        'staff_availability.staff_id',
+        'users.user_id'
+      )
+      .join(
+        'services',
+        'staff_availability.service_id',
+        'services.service_id'
+      )
+      .where(
+        'staff_availability.staff_id',
+        staffId
+      )
+      .orderBy(
+        'staff_availability.slot_id',
+        'desc'
+      )
+      .select(
+        'users.user_id as staffId',
+        'users.email',
+        'services.name as serviceName',
+        'staff_availability.start_time as startTime',
+        'staff_availability.end_time as endTime'
+      )
+      .first();
+
+
+    return result;
+
+
+  });
+        }catch (error) {
+        throw new Error(error.message);
+      }
+}
+,
+
+updateStaffAvailability: async (_, { input }, context) => {
+  requireRoles(context, ["admin"]);
+
+  const {
+    slotId,
+    staffId,
+    serviceId,
+    startTime,
+    endTime
+  } = input;
+  console.log(input)
+
+  try {
+    return await knex.transaction(async (trx) => {
+
+      // Check staff exists
+      const staff = await trx("users")
+        .where({
+          user_id: staffId,
+          role: "staff"
+        })
+        .first();
+
+      if (!staff) {
+        throw new Error("Staff not found");
+      }
+
+
+      // Check service exists
+      const service = await trx("services")
+        .where({
+          service_id: serviceId
+        })
+        .first();
+
+      if (!service) {
+        throw new Error("Service not found");
+      }
+
+
+      // Check if slot exists
+      const existingSlot = await trx("staff_availability")
+        .where({
+          slot_id: slotId
+        })
+        .first();
+
+
+      if (existingSlot) {
+
+        // Update existing slot
+        await trx("staff_availability")
+          .where({
+            slot_id: slotId
+          })
+          .update({
+            staff_id: staffId,
+            service_id: serviceId,
+            start_time: startTime,
+            end_time: endTime
+          });
+
+      } else {
+
+        // Create new slot
+        await trx("staff_availability")
+          .insert({
+            staff_id: staffId,
+            service_id: serviceId,
+            start_time: startTime,
+            end_time: endTime
+          });
+      }
+
+
+      // Return updated/created slot
+      return await trx("staff_availability")
+        .join(
+          "users",
+          "staff_availability.staff_id",
+          "users.user_id"
+        )
+        .join(
+          "services",
+          "staff_availability.service_id",
+          "services.service_id"
+        )
+        .where({
+          "staff_availability.staff_id": staffId
+        })
+        .orderBy(
+          "staff_availability.slot_id",
+          "desc"
+        )
+        .select(
+          "staff_availability.slot_id as slotId",
+          "users.user_id as staffId",
+          "users.email",
+          "services.service_id as serviceId",
+          "services.name as serviceName",
+          "staff_availability.start_time as startTime",
+          "staff_availability.end_time as endTime"
+        )
+        .first();
+
+    });
+
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+,
+
+addStaffAvailability: async (_, { input }, context) => {
+  requireRoles(context, ["admin"]);
+
+  const {
+    staffId,
+    serviceId,
+    startTime,
+    endTime
+  } = input;
+
+  try {
+    return await knex.transaction(async (trx) => {
+
+      // Check staff exists
+      const staff = await trx("users")
+        .where({
+          user_id: staffId,
+          role: "staff"
+        })
+        .first();
+
+      if (!staff) {
+        throw new Error("Staff not found");
+      }
+
+
+      // Check service exists
+      const service = await trx("services")
+        .where({
+          service_id: serviceId
+        })
+        .first();
+
+      if (!service) {
+        throw new Error("Service not found");
+      }
+
+
+      // Insert new availability slot
+      const [slot] = await trx("staff_availability")
+        .insert({
+          staff_id: staffId,
+          service_id: serviceId,
+          start_time: startTime,
+          end_time: endTime
+        })
+        .returning("*");
+
+
+      // Return complete data
+      return await trx("staff_availability")
+        .join(
+          "users",
+          "staff_availability.staff_id",
+          "users.user_id"
+        )
+        .join(
+          "services",
+          "staff_availability.service_id",
+          "services.service_id"
+        )
+        .where({
+          "staff_availability.slot_id": slot.slot_id
+        })
+        .select(
+          "staff_availability.slot_id as slotId",
+          "users.user_id as staffId",
+          "users.email",
+          "services.service_id as serviceId",
+          "services.name as serviceName",
+          "staff_availability.start_time as startTime",
+          "staff_availability.end_time as endTime"
+        )
+        .first();
+
+    });
+
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+,
+deleteStaffAvailability: async (_, { slotId }, context) => {
+  requireRoles(context, ["admin"]);
+
+  try {
+
+    const deleted = await knex("staff_availability")
+      .where({
+        slot_id: slotId
+      })
+      .del();
+
+
+    if (!deleted) {
+      throw new Error("Availability slot not found");
+    }
+
+
+    return true;
+
+  } catch (error) {
+    throw new Error(error.message);
+  }
+}
+,
+removeStaff: async (_, { staffId }, context) => {
+  requireRoles(context, ["admin"]);
+
+  try {
+    return await knex.transaction(async (trx) => {
+      // Check user exists
+      const user = await trx("users")
+        .where({ user_id: staffId })
+        .first();
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Remove all assigned services/availability
+      await trx("staff_availability")
+        .where({ staff_id: staffId })
+        .del();
+
+      // Change role back to customer
+      await trx("users")
+        .where({ user_id: staffId })
+        .update({
+          role: "customer"
+        });
+
+      return true;
+    });
+  } catch (error) {
+    throw new Error(error.message);
+  }
+},
+updateBooking: async (_, { bookingId, input }, context) => {
+  const { bookingState, paymentState } = input;
+
+  const updated = await knex("bookings")
+    .where({ booking_id: bookingId })
+    .update({
+      ...(bookingState && { booking_state: bookingState }),
+      ...(paymentState && { payment_state: paymentState }),
+    })
+    .returning([
+      "booking_id",
+      "user_id",
+      "slot_id",
+      "booking_state",
+      "payment_state",
+      "created_at",
+    ]);
+
+  if (updated.length === 0) {
+    throw new Error("Booking not found");
+  }
+
+  const booking = updated[0];
+
+  return {
+    bookingId: booking.booking_id,
+    userId: booking.user_id,
+    slotId: booking.slot_id,
+    bookingState: booking.booking_state,
+    paymentState: booking.payment_state,
+    createdAt: booking.created_at,
+  };
 },
     register: async (_, { email, password, role = 'customer' }) => {
       // 1. Check if email exists
