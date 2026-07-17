@@ -287,6 +287,7 @@ const DeleteBooking = gql`
 
 
 export default function ProductsPage() {
+  const navigate = useNavigate();
 
   const { loading, error, data } = useQuery(GET_PRODUCTS);
 
@@ -608,7 +609,16 @@ const handleCancelOrder = async(orderId) => {
 //   console.log("staffsError:", staffsError);
 //   console.log("staffsData:", staffsData);
 // }, [selectedService, staffsLoading, staffsError, staffsData]);
+  const handlelogout = () => {
+    try{
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 
+  navigate("/login");
+    }catch(err){
+        console.log(err);
+    }
+};
 
 
   return (
@@ -620,9 +630,11 @@ const handleCancelOrder = async(orderId) => {
     <div style={{marginRight:"500px"}}><h1>🏋 FitZone Gym Dashboard</h1></div>
     <div style={{marginLeft:"auto"}}>
     <nav>
+      <a href="#bookings">Bookings</a>
         <a href="#products">Products</a>
         <a href="#services">Services</a>
         <a href="#cart">Cart</a>
+        <a onClick={handlelogout} style={{ cursor: "pointer" }}>Logout</a>
     </nav>
     </div>
 </div>
@@ -1103,7 +1115,7 @@ Book Now
 
 
 
-<section style={{textAlign:'center',width:"fit-content" ,alignContent:'center', alignItems:'center',textAlign:'center'}}>
+<section style={{textAlign:'center',width:"fit-content" ,alignContent:'center', alignItems:'center',textAlign:'center'}} id='bookings'>
 {   MybookingLoading && <p>Loading bookings...</p>}
 {
 MybookingError &&  <p>Error loading bookings</p>

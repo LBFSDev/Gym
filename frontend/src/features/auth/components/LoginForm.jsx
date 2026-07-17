@@ -34,7 +34,7 @@ export const LoginForm = () => {
     if (user.role === 'customer') {
       navigate('/products');
       // navigate('/Dashboard');
-    } else if (user.role === 'admin') {
+    } else if (user.role === 'admin' || user.role =='staff') {
       navigate('/admindashboard');
     }
     },
@@ -46,8 +46,9 @@ export const LoginForm = () => {
   };
 
   return (
-    <>
+    <div className="Login">
       {/* Background ambient neon glow nodes */}
+    
       <div className="blur-glow blur-1"></div>
       <div className="blur-glow blur-2"></div>
 
@@ -176,6 +177,6 @@ export const LoginForm = () => {
           </div>
         </footer>
       </div>
-    </>
+    </div>
   );
 };
