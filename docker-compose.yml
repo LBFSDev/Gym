@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+
+  postgres_dev:
+    image: postgres:16-alpine
+
+    container_name: pern_postgres_dev
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+
+    networks:
+      - pern_network
+
+
+  backend:
+
+    build:
+      context: ./backend
+
+    container_name: pern-backend
+
+    restart: unless-stopped
+
+    depends_on:
+      - postgres_dev
+
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres_dev
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: 5432
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "4000:4000"
+
+    networks:
+      - pern_network
+
+
+  frontend:
+
+    build:
+      context: ./frontend
+
+    container_name: pern-frontend
+
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "80:80"
+
+    networks:
+      - pern_network
+
+
+volumes:
+
+  postgres_dev_data:
+
+
+networks:
+
+  pern_network:

@@ -11,7 +11,9 @@
     "dev": "node --watch src/app.js",
     "test:unit": "vitest run src/graphql/resolvers/tests/*.unit.test.js",
     "test:int": "docker-compose -f docker-compose.test.yml up -d && vitest run src/graphql/resolvers/tests/*.int.test.js",
-    "test:e2e": "vitest run __tests__/*.e2e.test.js"
+    "test:e2e": "vitest run __tests__/*.e2e.test.js",
+    "migrate": "knex migrate:latest",
+    "seed": "knex seed:run"
   },
   "keywords": [],
   "author": "",
