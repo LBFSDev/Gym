@@ -590,6 +590,7 @@ export default function FitZoneDashboard() {
                 setformBooking(initialFormBooking);
                 setBookingID('');
                 refetchBookings();
+                refetchServices();
           } catch (err) {
             setFormError(err.message);
           }

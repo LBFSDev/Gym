@@ -993,35 +993,69 @@ removeStaff: async (_, { staffId }, context) => {
 updateBooking: async (_, { bookingId, input }, context) => {
   const { bookingState, paymentState } = input;
 
-  const updated = await knex("bookings")
-    .where({ booking_id: bookingId })
-    .update({
-      ...(bookingState && { booking_state: bookingState }),
-      ...(paymentState && { payment_state: paymentState }),
-    })
-    .returning([
-      "booking_id",
-      "user_id",
-      "slot_id",
-      "booking_state",
-      "payment_state",
-      "created_at",
-    ]);
+  return await knex.transaction(async (trx) => {
+    // Get current booking and related service
+    const booking = await trx("bookings as b")
+      .join("staff_availability as sa", "b.slot_id", "sa.slot_id")
+      .select("b.booking_id", "b.booking_state", "sa.service_id")
+      .where("b.booking_id", bookingId)
+      .first();
 
-  if (updated.length === 0) {
-    throw new Error("Booking not found");
-  }
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
 
-  const booking = updated[0];
+    // If booking becomes confirmed, decrease capacity first
+    if (
+      booking.booking_state !== "confirmed" &&
+      bookingState === "confirmed"
+    ) {
+      const updated = await trx("services")
+        .where("service_id", booking.service_id)
+        .where("capacity", ">", 0)
+        .decrement("capacity", 1);
 
-  return {
-    bookingId: booking.booking_id,
-    userId: booking.user_id,
-    slotId: booking.slot_id,
-    bookingState: booking.booking_state,
-    paymentState: booking.payment_state,
-    createdAt: booking.created_at,
-  };
+      if (updated === 0) {
+        throw new Error("No available capacity for this service.");
+      }
+    }
+    // If booking leaves confirmed state, increase capacity
+    else if (
+      booking.booking_state === "confirmed" &&
+      ["pending", "completed", "cancelled"].includes(bookingState)
+    ) {
+      await trx("services")
+        .where("service_id", booking.service_id)
+        .increment("capacity", 1);
+    }
+
+    // Update booking
+    const [updatedBook] = await trx("bookings")
+      .where({ booking_id: bookingId })
+      .update(
+        {
+          booking_state: bookingState,
+          payment_state: paymentState,
+        },
+        [
+          "booking_id",
+          "user_id",
+          "slot_id",
+          "booking_state",
+          "payment_state",
+          "created_at",
+        ]
+      );
+
+    return {
+      bookingId: updatedBook.booking_id,
+      userId: updatedBook.user_id,
+      slotId: updatedBook.slot_id,
+      bookingState: updatedBook.booking_state,
+      paymentState: updatedBook.payment_state,
+      createdAt: updatedBook.created_at,
+    };
+  });
 },
     register: async (_, { email, password, role = 'customer' }) => {
       // 1. Check if email exists

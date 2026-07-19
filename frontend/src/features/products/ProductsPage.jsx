@@ -877,7 +877,7 @@ Checkout
 
           <tr key={order.orderId}>
             <td> #{order.orderId}</td>
-            <td>{new Date(order.createdAt).toLocaleDateString()} </td>
+            <td>{new Date(Number(order.createdAt)).toLocaleDateString()} </td>
 
 
             <td>
